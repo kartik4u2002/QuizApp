@@ -1,0 +1,88 @@
+# Frontend Implementation Plan - NLP Quiz System
+
+The goal is to build a premium, AI-native Next.js 14 frontend for the NLP Quiz Generation System. The UI will follow a modern, dark-mode, glassmorphism aesthetic inspired by Vercel and Linear, utilizing Tailwind CSS, shadcn/ui, Framer Motion, and Zustand for state management. 
+
+## User Review Required
+
+> [!IMPORTANT]
+> Please review the chosen technology stack (Next.js App Router, Zustand, Axios, Recharts, Framer Motion, shadcn/ui) and the planned layout for the dashboard. 
+
+## Open Questions
+
+> [!WARNING]
+> 1. Do you have a specific color palette preference, or should I proceed with a standard deep-dark theme (slate/zinc with vibrant purple/blue accents for the AI feel)?
+> 2. Should the frontend be served completely separately from Django (e.g., running on port 3000 during dev and built statically/standalone for production), or integrated into NGINX routing? (I plan to run it separately on port 3000 for development and route through NGINX for production).
+
+## Architecture & Data Flow
+
+```mermaid
+graph TD
+    A[Next.js App Router] -->|API Calls via Axios| B[API Service Layer]
+    B -->|JWT Auth Interceptors| C[Django Backend / FastAPI]
+    D[Zustand Store] -->|State Management| A
+    A -->|UI Components| E[shadcn/ui + Tailwind]
+    A -->|Animations| F[Framer Motion]
+```
+
+## Proposed Changes (Folder Structure)
+
+We will bootstrap the Next.js app inside `d:\New_project\frontend\`.
+
+### `frontend/app/`
+- `page.tsx` (Home/Landing)
+- `login/page.tsx`
+- `register/page.tsx`
+- `dashboard/page.tsx`
+- `news/page.tsx`
+- `quiz/[id]/page.tsx`
+- `analytics/page.tsx`
+
+### `frontend/components/`
+- `ui/` (shadcn/ui generated components: card, button, dialog, progress, etc.)
+- `layout/` (Navbar, Sidebar, Footer)
+- `quiz/` (QuizCard, QuizTimer, ProgressBar)
+- `dashboard/` (StatsCard, AnalyticsChart)
+- `shared/` (LoadingSkeleton, TopicBadge)
+
+### `frontend/services/`
+- `api.ts` (Axios instance with JWT interceptors)
+- `auth.ts` (Login, Register APIs)
+- `quiz.ts` (Fetch latest, generate, submit)
+- `news.ts` (Fetch news)
+
+### `frontend/store/`
+- `useAuthStore.ts` (JWT state, user data)
+- `useQuizStore.ts` (Current quiz state, scores)
+
+## Step-by-Step Execution Plan
+
+1. **Initialization:**
+   - Run `npx create-next-app@latest frontend --typescript --tailwind --eslint --app --src-dir=false --import-alias="@/*"`
+   - Install dependencies: `axios zustand recharts framer-motion lucide-react`
+   - Initialize `shadcn-ui`: `npx shadcn-ui@latest init`
+   - Add shadcn components: `card`, `button`, `progress`, `toast`, `tabs`, `avatar`.
+
+2. **Theming & Layout:**
+   - Configure Tailwind for dark mode and glassmorphism utilities (`bg-opacity`, `backdrop-blur`).
+   - Build `Navbar` and `Sidebar` layouts wrapped in Framer Motion for smooth transitions.
+
+3. **State Management & Services:**
+   - Implement `api.ts` with Axios interceptors to automatically attach JWT tokens to requests and handle 401 unauthenticated errors.
+   - Setup Zustand stores for authentication and quiz progress.
+
+4. **Page Implementation:**
+   - **Auth Pages**: Login/Register with form validation.
+   - **Dashboard**: Recharts integration for accuracy and history.
+   - **News Feed**: Real-time auto-refresh, glass cards, "Generate Quiz" buttons triggering the Celery backend.
+   - **Quiz Engine UI**: Interactive MCQ UI with a timer, progress bar, and immediate feedback (Framer motion micro-animations for correct/wrong answers).
+
+## Verification Plan
+
+### Automated/Unit Tests
+- Verify standard builds using `npm run build`.
+- Validate Next.js strict mode rendering.
+
+### Manual Verification
+- Test JWT login flow with the Django backend.
+- Attempt to generate a quiz from the frontend News feed and verify the async loading state works.
+- Take a quiz on the frontend and ensure the submission successfully hits the Django `/api/quiz/submit/` endpoint and updates the dashboard.

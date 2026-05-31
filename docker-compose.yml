@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: nlp_quiz_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    env_file:
+      - .env
+
+  redis:
+    image: redis:alpine
+    container_name: nlp_quiz_redis
+    ports:
+      - "6379:6379"
+
+  django_backend:
+    build: ./django_backend
+    container_name: nlp_quiz_django
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./django_backend:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+
+  fastapi_services:
+    build: ./fastapi_services
+    container_name: nlp_quiz_fastapi
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    volumes:
+      - ./fastapi_services:/app
+      - ./ml_models:/app/ml_models
+      - huggingface_cache:/root/.cache/huggingface
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+
+  celery_worker:
+    build: ./fastapi_services
+    container_name: nlp_quiz_celery
+    command: celery -A worker.celery_app worker --loglevel=info --concurrency=1
+    volumes:
+      - ./fastapi_services:/app
+      - ./ml_models:/app/ml_models
+      - huggingface_cache:/root/.cache/huggingface
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+      - fastapi_services
+
+  celery_beat:
+    build: ./fastapi_services
+    container_name: nlp_quiz_celery_beat
+    command: celery -A worker.celery_app beat --loglevel=info
+    volumes:
+      - ./fastapi_services:/app
+      - ./ml_models:/app/ml_models
+      - huggingface_cache:/root/.cache/huggingface
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - celery_worker
+
+  nginx:
+    image: nginx:latest
+    container_name: nlp_quiz_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - django_backend
+      - fastapi_services
+
+volumes:
+  mongodb_data:
+  huggingface_cache:
