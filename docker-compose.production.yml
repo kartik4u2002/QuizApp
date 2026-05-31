@@ -52,9 +52,10 @@ services:
   celery_worker:
     build:
       context: ./fastapi_services
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile
     container_name: quiz_celery_worker
     restart: always
+    command: celery -A worker.celery_app worker --loglevel=info --concurrency=1
     volumes:
       - ./ml_models:/app/ml_models
       - huggingface_cache:/root/.cache/huggingface
@@ -68,9 +69,10 @@ services:
   celery_beat:
     build:
       context: ./fastapi_services
-      dockerfile: Dockerfile.beat
+      dockerfile: Dockerfile
     container_name: quiz_celery_beat
     restart: always
+    command: celery -A worker.celery_app beat --loglevel=info
     volumes:
       - ./ml_models:/app/ml_models
       - huggingface_cache:/root/.cache/huggingface
