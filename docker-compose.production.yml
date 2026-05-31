@@ -5,6 +5,8 @@ services:
     image: mongo:latest
     container_name: quiz_mongodb
     restart: always
+    # Limit MongoDB WiredTiger engine cache to 256MB to save RAM on small EC2 instances
+    command: mongod --wiredTigerCacheSizeGB 0.25
     volumes:
       - mongodb_data:/data/db
     env_file:
@@ -24,7 +26,8 @@ services:
       dockerfile: Dockerfile
     container_name: quiz_django_backend
     restart: always
-    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4
+    # Reduced from 4 workers to 2 workers to conserve RAM
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2
     volumes:
       - django_static:/app/static
       - django_media:/app/media
@@ -39,7 +42,8 @@ services:
       dockerfile: Dockerfile
     container_name: quiz_fastapi_service
     restart: always
-    command: uvicorn main:app --host 0.0.0.0 --port 8001 --workers 4
+    # Reduced from 4 workers to 1 worker (FastAPI is fully async, 1 worker is sufficient and saves massive RAM)
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --workers 1
     volumes:
       - ./ml_models:/app/ml_models
       - huggingface_cache:/root/.cache/huggingface
