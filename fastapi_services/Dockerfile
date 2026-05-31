@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 
+# Install CPU-only PyTorch first to prevent downloading 2GB+ of NVIDIA CUDA dependencies
+RUN pip install --no-cache-dir --user torch==2.1.1 --index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 RUN pip install --no-cache-dir --user https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz
