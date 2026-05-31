@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: quiz_mongodb
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    env_file:
+      - .env
+
+  redis:
+    image: redis:alpine
+    container_name: quiz_redis
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+
+  django_backend:
+    build:
+      context: ./django_backend
+      dockerfile: Dockerfile
+    container_name: quiz_django_backend
+    restart: always
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4
+    volumes:
+      - django_static:/app/static
+      - django_media:/app/media
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+
+  fastapi_service:
+    build:
+      context: ./fastapi_services
+      dockerfile: Dockerfile
+    container_name: quiz_fastapi_service
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --workers 4
+    volumes:
+      - ./ml_models:/app/ml_models
+      - huggingface_cache:/root/.cache/huggingface
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+
+  celery_worker:
+    build:
+      context: ./fastapi_services
+      dockerfile: Dockerfile.worker
+    container_name: quiz_celery_worker
+    restart: always
+    volumes:
+      - ./ml_models:/app/ml_models
+      - huggingface_cache:/root/.cache/huggingface
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+      - fastapi_service
+
+  celery_beat:
+    build:
+      context: ./fastapi_services
+      dockerfile: Dockerfile.beat
+    container_name: quiz_celery_beat
+    restart: always
+    volumes:
+      - ./ml_models:/app/ml_models
+      - huggingface_cache:/root/.cache/huggingface
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - celery_worker
+
+  nginx:
+    image: nginx:alpine
+    container_name: quiz_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.production.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+      - django_static:/app/static:ro
+      - django_media:/app/media:ro
+    depends_on:
+      - django_backend
+      - fastapi_service
+
+volumes:
+  mongodb_data:
+  redis_data:
+  django_static:
+  django_media:
+  huggingface_cache:

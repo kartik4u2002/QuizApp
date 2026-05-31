@@ -1,0 +1,15 @@
+[Unit]
+Description=Quiz Platform Application Stack
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/ubuntu/quiz-platform
+ExecStart=/usr/bin/docker compose -f docker-compose.production.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.production.yml down
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

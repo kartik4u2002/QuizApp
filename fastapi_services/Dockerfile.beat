@@ -32,7 +32,5 @@ ENV HF_HOME=/app/ml_models/cache
 
 RUN mkdir -p /app/ml_models/cache /app/ml_models/models
 
-EXPOSE 8001
-
-# Default command for FastAPI
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "4"]
+# Default command to run Celery beat scheduler
+CMD ["celery", "-A", "worker.celery_app", "beat", "--loglevel=info"]
