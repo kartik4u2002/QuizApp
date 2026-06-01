@@ -4,8 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Brain, ArrowRight, Sparkles, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const { accessToken } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid Next.js hydration mismatch since Zustand store is persisted in localStorage
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const getStartedHref = mounted && accessToken ? "/dashboard" : "/register";
+  const browseNewsHref = mounted && accessToken ? "/news" : "/login";
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
@@ -35,13 +48,13 @@ export default function Home() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link href="/register">
+            <Link href={getStartedHref}>
               <Button size="lg" className="h-12 px-8 text-base">
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/news">
+            <Link href={browseNewsHref}>
               <Button size="lg" variant="outline" className="h-12 px-8 text-base bg-background/50 backdrop-blur">
                 <BookOpen className="mr-2 h-5 w-5" />
                 Browse Live News
