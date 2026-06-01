@@ -23,33 +23,48 @@ export function NewsCard({ article, delay = 0 }: NewsCardProps) {
     setQuizId(article.quiz_id);
   }, [article.quiz_id]);
 
-  // Polling loop while generating
+  // Polling loop while generating (Sequential polling to avoid overloading the CPU)
   useEffect(() => {
     if (!isGenerating) return;
 
+    let isMounted = true;
     let attempts = 0;
-    const interval = setInterval(async () => {
+    let timerId: any;
+
+    const poll = async () => {
       attempts += 1;
-      // Stop polling after 2 minutes to prevent resource waste
-      if (attempts > 60) {
-        clearInterval(interval);
-        setIsGenerating(false);
+      // Stop polling after 45 attempts (approx. 2-3 minutes total depending on response times)
+      if (attempts > 45) {
+        if (isMounted) setIsGenerating(false);
         return;
       }
 
       try {
         const updatedArticle = await newsService.getNewsById(article.article_id);
         if (updatedArticle && updatedArticle.quiz_id) {
-          setQuizId(updatedArticle.quiz_id);
-          clearInterval(interval);
-          setIsGenerating(false);
+          if (isMounted) {
+            setQuizId(updatedArticle.quiz_id);
+            setIsGenerating(false);
+          }
+          return;
         }
       } catch (pollError) {
         console.error("Error polling quiz status:", pollError);
       }
-    }, 2000); // Poll every 2 seconds
 
-    return () => clearInterval(interval);
+      // Schedule next poll only after the current one completes
+      if (isMounted) {
+        timerId = setTimeout(poll, 2000);
+      }
+    };
+
+    // Trigger first poll
+    timerId = setTimeout(poll, 2000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timerId);
+    };
   }, [isGenerating, article.article_id]);
 
   const handleGenerate = async () => {
