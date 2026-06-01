@@ -24,6 +24,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 # Copy necessary files from the builder stage to reduce image size
 COPY --from=builder /app/package*.json ./
