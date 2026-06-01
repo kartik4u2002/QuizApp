@@ -134,4 +134,8 @@ fi
 CRON_JOB="0 */12 * * * certbot renew --post-hook \"docker compose -f $SCRIPT_DIR/docker-compose.production.yml exec -T nginx nginx -s reload\" >> /var/log/certbot-renew.log 2>&1"
 (crontab -l 2>/dev/null | grep -F "certbot renew" || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -)
 
+# 11. Restart Nginx to force IP re-resolution of recreated containers
+echo "Restarting Nginx to re-resolve container IPs..."
+docker compose -f docker-compose.production.yml restart nginx
+
 echo "=== Deployment Completed Successfully ==="
