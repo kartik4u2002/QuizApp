@@ -76,27 +76,32 @@ Once a context sentence and a target answer are identified, they are formatted a
 
 ---
 
-### 3. Contextual Distractor Generation (BERT Fill-Mask)
-To create plausible multiple-choice alternatives (distractors) that look grammatically and contextually correct, we use a Masked Language Model (MLM).
+### 3. Contextual Distractor Generation (Hierarchical Strategy)
+To create plausible, non-vague multiple-choice options, the system uses a hierarchical distractor generation pipeline combining other article entities, BERT fill-mask predictions, and semantic/numeric variations:
 
-* **Model Used**: `bert-base-uncased` (bidirectional transformer trained on Wikipedia and BooksCorpus).
-* **Pipeline Class**: HuggingFace `pipeline("fill-mask", model="bert-base-uncased")`.
-* **Workflow**:
-  1. **Masking**: The target answer inside the context sentence is replaced with the special `[MASK]` token.
-     * *Example*: `The 2024 Olympic Games were hosted in [MASK] during the summer.`
-  2. **Prediction**: The masked sentence is passed to BERT, which predicts the top 10 most likely tokens to fill the slot.
-  3. **Heuristics & Filtering**: The pipeline filters the raw predictions using strict rules:
-     * **Self-Exclusion**: Excludes any prediction matching the correct answer (case-insensitive).
-     * **Word Length**: Excludes words under 3 characters (e.g., "in", "at", "by") which are typically prepositions.
-     * **Alphabetical Check**: Excludes numeric values or punctuation marks (unless numbers are desired).
-     * **Casing Alignment**: Inspects the original correct answer. If the correct answer is capitalized (e.g., `Paris`), the distractors are automatically converted to title-case (e.g., `London`, `Tokyo`) to maintain consistency and prevent grammatical giveaways.
-  4. **Selection**: The top 3 unique matching tokens are selected.
-
-#### 🛡️ Robust Fallback Mechanism
-If BERT fails to load, times out, or cannot generate at least 3 valid predictions fitting the grammatical context, the system falls back to a deterministic template generator:
-* `Not {answer}`
-* `Alternative to {answer}`
-* `Fake {answer}`
+1. **Intra-Article Entity Matching (Primary Source)**:
+   - The engine searches all other entities extracted from the same article.
+   - If it finds other entities sharing the exact same label as the target answer (e.g., comparing a `PERSON` to other `PERSON` entities in the text), it uses them as distractors. This produces highly relevant, contextual, and challenging alternatives.
+2. **BERT Fill-Mask Model (Secondary Source)**:
+   - **Model Used**: `bert-base-uncased` (via HuggingFace `pipeline("fill-mask")`).
+   - **Masking**: The correct answer is replaced with a `[MASK]` token.
+   - **Strict Filtering**: BERT's top 15 predictions are filtered to exclude:
+     - The correct answer itself (or substrings of it).
+     - Auxiliary verbs and common grammatical stopwords (e.g., `had`, `has`, `also`, `was`, `been`, `is`, `by`).
+     - Words with fewer than 3 characters or containing non-alphabetic symbols.
+   - **Casing Alignment**: The chosen tokens are converted to Title Case if the correct answer is capitalized (preventing grammatical giveaways).
+3. **Numeric Shifting (Tertiary Source)**:
+   - If the answer contains numbers (e.g., dates, years, percentages), the engine extracts them and applies random mathematical offsets (e.g., generating `2023`, `2025` for `2024`) to create logical numeric alternatives.
+4. **Curated Entity Pools (Fallback)**:
+   - If there are still fewer than 3 distractors, the engine pulls from a pre-defined dictionary of common entities classified by label:
+     - **DATE**: `["last week", "earlier this month", "last month", "late last year", ...]`
+     - **PERSON**: `["the spokesperson", "the agency head", "a committee representative", ...]`
+     - **ORG**: `["the executive council", "the state department", "the governing committee", ...]`
+5. **Semantic Templates (Last Resort)**:
+   - If all else fails, instead of generic `Not {answer}` strings, the engine outputs smart descriptive templates:
+     - `An alternative to {answer}`
+     - `A related context to {answer}`
+     - `A different aspect of {answer}`
 
 This guarantees that the API never fails to return a valid 4-option multiple-choice question.
 
