@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, BrainCircuit, Loader2, CheckCircle2 } from "lucide-react";
 import { quizService } from "@/services/quiz";
+import { newsService } from "@/services/news";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -15,17 +16,46 @@ interface NewsCardProps {
 
 export function NewsCard({ article, delay = 0 }: NewsCardProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [success, setSuccess] = useState(article.status === "processed");
+  const [quizId, setQuizId] = useState<string | null>(article.quiz_id);
+
+  // Sync state if article prop updates externally
+  useEffect(() => {
+    setQuizId(article.quiz_id);
+  }, [article.quiz_id]);
+
+  // Polling loop while generating
+  useEffect(() => {
+    if (!isGenerating) return;
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts += 1;
+      // Stop polling after 2 minutes to prevent resource waste
+      if (attempts > 60) {
+        clearInterval(interval);
+        setIsGenerating(false);
+        return;
+      }
+
+      try {
+        const updatedArticle = await newsService.getNewsById(article.article_id);
+        if (updatedArticle && updatedArticle.quiz_id) {
+          setQuizId(updatedArticle.quiz_id);
+          clearInterval(interval);
+          setIsGenerating(false);
+        }
+      } catch (pollError) {
+        console.error("Error polling quiz status:", pollError);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [isGenerating, article.article_id]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
       await quizService.generateQuiz(article.article_id);
-      // We simulate waiting for background job, or just show success state immediately for UX
-      setTimeout(() => {
-        setSuccess(true);
-        setIsGenerating(false);
-      }, 1500);
     } catch (error) {
       console.error("Failed to generate quiz", error);
       setIsGenerating(false);
@@ -67,18 +97,13 @@ export function NewsCard({ article, delay = 0 }: NewsCardProps) {
             Read Source <ExternalLink className="ml-1 h-3 w-3" />
           </a>
           
-          {article.quiz_id ? (
-            <Link href={`/quiz/${article.quiz_id}`}>
+          {quizId ? (
+            <Link href={`/quiz/${quizId}`}>
               <Button size="sm" variant="secondary" className="bg-green-500/20 text-green-500 hover:bg-green-500/30 cursor-pointer">
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Take Quiz
               </Button>
             </Link>
-          ) : success ? (
-            <Button size="sm" variant="secondary" className="bg-green-500/20 text-green-500 hover:bg-green-500/30" disabled>
-              <CheckCircle2 className="mr-2 h-4 w-4 animate-pulse" />
-              Quiz Ready
-            </Button>
           ) : (
             <Button size="sm" onClick={handleGenerate} disabled={isGenerating}>
               {isGenerating ? (

@@ -15,20 +15,51 @@ class NLPPipeline:
 
     def clean_text(self, text: str) -> str:
         """
-        Removes HTML tags and extra whitespace from the text.
+        Removes HTML tags, decodes HTML entities, strips NewsAPI truncation markers,
+        and cleans up extra whitespaces.
         """
+        import html
+        # Decode HTML entities like &amp; &quot;
+        text = html.unescape(text)
         # Remove HTML tags
         clean = re.sub(r'<.*?>', '', text)
+        # Strip NewsAPI truncation markers like "… [+1511 chars]" or "[+123 chars]"
+        clean = re.sub(r'\s*[…\.]*\s*\[\+\d+\s+chars\]', '', clean)
         # Remove extra whitespace
         clean = re.sub(r'\s+', ' ', clean).strip()
         return clean
 
     def extract_sentences(self, text: str) -> List[str]:
         """
-        Splits text into sentences using spaCy.
+        Splits text into sentences using spaCy, filtering out common web/cookie disclaimers.
         """
         doc = self.nlp(text)
-        sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 20]
+        
+        # Boilerplate indicators to filter out cookie/GDPR disclaimers
+        boilerplate_keywords = [
+            "accept all", "cookie policy", "privacy policy", "consent framework", 
+            "iab transparency", "store and/or access", "personal data", "click accept",
+            "geolocation data", "select 'manage settings'", "advertise with us", 
+            "subscribe to our newsletter", "all rights reserved"
+        ]
+        
+        sentences = []
+        for sent in doc.sents:
+            sent_text = sent.text.strip()
+            if len(sent_text) <= 20:
+                continue
+                
+            # Check if this sentence is cookie consent or boilerplate
+            is_boilerplate = False
+            lower_sent = sent_text.lower()
+            for kw in boilerplate_keywords:
+                if kw in lower_sent:
+                    is_boilerplate = True
+                    break
+            
+            if not is_boilerplate:
+                sentences.append(sent_text)
+                
         return sentences
 
     def extract_keywords_ner(self, text: str) -> List[Dict[str, Any]]:
