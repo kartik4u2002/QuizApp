@@ -6,12 +6,16 @@ The application uses a microservices architecture composed of a **Next.js Fronte
 
 ---
 
-## 🚀 Live Deployment
+## 🚀 Live Deployment & Production Status
 
-The entire application is fully deployed on **AWS EC2** (Ubuntu 24.04) using Docker Compose, Nginx, and Let's Encrypt SSL.
+> [!IMPORTANT]
+> **Live Deployment Status:** The AWS free tier limit has expired, so the live deployment is currently offline. However, the project is fully **production-ready** and operational.
 
-* **Production URL**: [https://quizapp.space/](https://quizapp.space/)
-* **Django Admin Portal**: [https://quizapp.space/admin/](https://quizapp.space/admin/)
+The application is configured for deployment on **AWS EC2** (Ubuntu 24.04) using Docker Compose, Nginx, and Let's Encrypt SSL.
+
+* **Production URL**: [https://quizapp.space/](https://quizapp.space/) (Offline due to AWS Free Tier Expiry)
+* **Django Admin Portal**: [https://quizapp.space/admin/](https://quizapp.space/admin/) (Offline due to AWS Free Tier Expiry)
+
 
 ---
 
