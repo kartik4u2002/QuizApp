@@ -23,7 +23,7 @@ The application is configured for deployment on **AWS EC2** (Ubuntu 24.04) using
 
 ```mermaid
 graph TD
-    A[External News APIs] -->|Fetch every 5m| B[FastAPI News Ingestion Service]
+    A[External News APIs] -->|Fetch every 24hrs| B[FastAPI News Ingestion Service]
     B -->|Store Raw Article| C[(MongoDB)]
     B -->|Publish Event| D[Redis Queue]
     D -->|Consume Event| E[Celery Workers NLP Processing]
